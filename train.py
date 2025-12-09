@@ -1,5 +1,6 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+# 原始强制锁定 GPU0，导致脚本设置失效，改为尊重外部环境变量/命令行
+# os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 from pprint import pprint
 from config.config import parser
 from dataset.data_module import DataModule

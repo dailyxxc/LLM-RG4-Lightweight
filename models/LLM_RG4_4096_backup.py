@@ -75,8 +75,15 @@ class LLM_RG4(pl.LightningModule):
             self.APPA_llama_proj_1 = nn.Linear(768, 768)
             self.APPA_layernorm_768_2 = nn.LayerNorm(768)
             self.APPA_llama_proj_2 = nn.Linear(768, 2048)
-            self.APPA_llama_proj_3 = nn.Linear(2048, self.embed_dim)  # Now using dynamic embedding dimension  # todo : if preformance is not good, change to 4096, and nn.liner(4096, self.embed_dim)
-            self.APPA_layernorm_4096_1 = nn.LayerNorm(self.embed_dim)  # Adjusted to match embed_dim
+            self.APPA_layernorm_2048_1 = nn.LayerNorm(2048)
+            # 原2048版本: self.APPA_llama_proj_3 = nn.Linear(2048, self.embed_dim)
+            self.APPA_llama_proj_3 = nn.Linear(2048, 4096)
+            self.APPA_layernorm_4096_1 = nn.LayerNorm(4096)
+            # 原2048版本: 无第4层，直接接 embed_dim
+            self.APPA_llama_proj_4 = nn.Linear(4096, self.embed_dim)
+            self.APPA_layernorm_embed_1 = nn.LayerNorm(self.embed_dim)
+            # 打印投影层架构信息（4096 版本）
+            print(f"APPA Projection architecture (4096 version): 768 → 768 → 2048 → 4096 → {self.embed_dim}")
 
         elif args.stage_class == 2:
             # APPA
@@ -90,8 +97,13 @@ class LLM_RG4(pl.LightningModule):
             self.APPA_llama_proj_1 = nn.Linear(768, 768)
             self.APPA_layernorm_768_2 = nn.LayerNorm(768)
             self.APPA_llama_proj_2 = nn.Linear(768, 2048)
-            self.APPA_llama_proj_3 = nn.Linear(2048, self.embed_dim) # todo : if preformance is not good, change to 4096, and nn.liner(4096, self.embed_dim)
-            self.APPA_layernorm_4096_1 = nn.LayerNorm(self.embed_dim)
+            self.APPA_layernorm_2048_1 = nn.LayerNorm(2048)
+            # 原2048版本: self.APPA_llama_proj_3 = nn.Linear(2048, self.embed_dim)
+            self.APPA_llama_proj_3 = nn.Linear(2048, 4096)
+            self.APPA_layernorm_4096_1 = nn.LayerNorm(4096)
+            # 原2048版本: 无第4层，直接接 embed_dim
+            self.APPA_llama_proj_4 = nn.Linear(4096, self.embed_dim)
+            self.APPA_layernorm_embed_1 = nn.LayerNorm(self.embed_dim)
 
             # lateral
             self.lateral_crossattention_block = nn.MultiheadAttention(768, 12, dropout=0.1, add_bias_kv=True,
@@ -100,8 +112,13 @@ class LLM_RG4(pl.LightningModule):
             self.lateral_llama_proj_1 = nn.Linear(768, 768)
             self.lateral_layernorm_768_2 = nn.LayerNorm(768)
             self.lateral_llama_proj_2 = nn.Linear(768, 2048)
-            self.lateral_llama_proj_3 = nn.Linear(2048, self.embed_dim)
-            self.lateral_layernorm_4096_1 = nn.LayerNorm(self.embed_dim)
+            self.lateral_layernorm_2048_1 = nn.LayerNorm(2048)
+            # 原2048版本: self.lateral_llama_proj_3 = nn.Linear(2048, self.embed_dim)
+            self.lateral_llama_proj_3 = nn.Linear(2048, 4096)
+            self.lateral_layernorm_4096_1 = nn.LayerNorm(4096)
+            # 原2048版本: 无第4层，直接接 embed_dim
+            self.lateral_llama_proj_4 = nn.Linear(4096, self.embed_dim)
+            self.lateral_layernorm_embed_1 = nn.LayerNorm(self.embed_dim)
 
             # text
             self.text_crossattention_block = nn.MultiheadAttention(768, 12, dropout=0.1, add_bias_kv=True,
@@ -110,12 +127,22 @@ class LLM_RG4(pl.LightningModule):
             self.text_llama_proj_1 = nn.Linear(768, 768)
             self.text_layernorm_768_2 = nn.LayerNorm(768)
             self.text_llama_proj_2 = nn.Linear(768, 2048)
-            self.text_llama_proj_3 = nn.Linear(2048, self.embed_dim)
-            self.text_layernorm_4096_1 = nn.LayerNorm(self.embed_dim)
+            self.text_layernorm_2048_1 = nn.LayerNorm(2048)
+            # 原2048版本: self.text_llama_proj_3 = nn.Linear(2048, self.embed_dim)
+            self.text_llama_proj_3 = nn.Linear(2048, 4096)
+            self.text_layernorm_4096_1 = nn.LayerNorm(4096)
+            # 原2048版本: 无第4层，直接接 embed_dim
+            self.text_llama_proj_4 = nn.Linear(4096, self.embed_dim)
+            self.text_layernorm_embed_1 = nn.LayerNorm(self.embed_dim)
 
             # Update iit projection size based on embedding dimension
             self.iit_proj = nn.Linear(self.embed_dim * 3, self.embed_dim)
             self.iit_layernorm = nn.LayerNorm(self.embed_dim)
+            # 打印投影层架构信息（4096 版本）
+            print(f"Stage2 Projection architecture (4096 version):")
+            print(f"  - APPA: 768 → 768 → 2048 → 4096 → {self.embed_dim}")
+            print(f"  - Lateral: 768 → 768 → 2048 → 4096 → {self.embed_dim}")
+            print(f"  - Text: 768 → 768 → 2048 → 4096 → {self.embed_dim}")
 
         if args.llm_use_lora:
             peft_config = LoraConfig(
@@ -226,8 +253,11 @@ class LLM_RG4(pl.LightningModule):
 
         inputs_llama2 = self.APPA_llama_proj_2(inputs_llama1)
         inputs_llama2 = F.gelu(inputs_llama2)
+        inputs_llama2 = self.APPA_layernorm_2048_1(inputs_llama2)
         inputs_llama2 = self.APPA_llama_proj_3(inputs_llama2)
         inputs_llama2 = self.APPA_layernorm_4096_1(inputs_llama2)
+        inputs_llama2 = self.APPA_llama_proj_4(inputs_llama2)
+        inputs_llama2 = self.APPA_layernorm_embed_1(inputs_llama2)
         atts_llama = torch.ones(inputs_llama2.size()[:-1], dtype=torch.long).to(images.device)
         return inputs_llama2, atts_llama, inputs_llama1
 
@@ -242,8 +272,11 @@ class LLM_RG4(pl.LightningModule):
         inputs_llama1 = self.lateral_layernorm_768_2(inputs_llama1) + inputs_llama
         inputs_llama1 = self.lateral_llama_proj_2(inputs_llama1)
         inputs_llama1 = F.gelu(inputs_llama1)
+        inputs_llama1 = self.lateral_layernorm_2048_1(inputs_llama1)
         inputs_llama1 = self.lateral_llama_proj_3(inputs_llama1)
         inputs_llama1 = self.lateral_layernorm_4096_1(inputs_llama1)
+        inputs_llama1 = self.lateral_llama_proj_4(inputs_llama1)
+        inputs_llama1 = self.lateral_layernorm_embed_1(inputs_llama1)
         atts_llama = torch.ones(inputs_llama1.size()[:-1], dtype=torch.long).to(images.device)
         return inputs_llama1, atts_llama
 
@@ -269,8 +302,11 @@ class LLM_RG4(pl.LightningModule):
         inputs_llama1 = self.text_layernorm_768_2(inputs_llama1) + inputs_llama
         inputs_llama1 = self.text_llama_proj_2(inputs_llama1)
         inputs_llama1 = F.gelu(inputs_llama1)
+        inputs_llama1 = self.text_layernorm_2048_1(inputs_llama1)
         inputs_llama1 = self.text_llama_proj_3(inputs_llama1)
         inputs_llama1 = self.text_layernorm_4096_1(inputs_llama1)
+        inputs_llama1 = self.text_llama_proj_4(inputs_llama1)
+        inputs_llama1 = self.text_layernorm_embed_1(inputs_llama1)
         atts_llama = torch.ones(inputs_llama1.size()[:-1], dtype=torch.long).to(query_feature.device)
         return inputs_llama1, atts_llama
 

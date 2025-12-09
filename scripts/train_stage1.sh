@@ -1,16 +1,17 @@
 #!/bin/bash
 dataset="mimic_cxr"
-base_dir="/scratch/$USER/my_project/LLM-RAG/dataset/mimic-cxr-jpg/2.0.0/files/"
-sn_annotation="./dataset/annotation/final_single_view_no_long_add1score_sentence_level.json"
-sw_annotation="./dataset/annotation/final_single_view_with_long_add1score_sentence_level.json"
-mn_annotation="./dataset/annotation/final_multi_view_no_long_add1score_sentence_level.json"
-mw_annotation="./dataset/annotation/final_multi_view_with_long_add1score_sentence_level.json"
+base_dir="../LLM-RG4/mimic-cxr-jpg/2.0.0/files/"
+sn_annotation="../LLM-RG4/final_single_view_no_long_add1score_sentence_level.json"
+sw_annotation="../LLM-RG4/final_single_view_with_long_add1score_sentence_level.json"
+mn_annotation="../LLM-RG4/final_multi_view_no_long_add1score_sentence_level.json"
+mw_annotation="../LLM-RG4/final_multi_view_with_long_add1score_sentence_level.json"
 #vicuna_model="./hf/vicuna-7b-v1.5"
 vicuna_model="./hf/Tiny-Vicuna-1B"
 rad_dino_path="./hf/rad-dino"
 cxr_bert_path="./hf/BiomedVLP-CXR-BERT-specialized"
 chexbert_path="./hf/chexbert.pth"
 bert_path="./hf/bert-base-uncased"
+# 原版本: version="train_stage1_2048"
 version="train_stage1_4096"
 savepath="./save/$dataset/$version"
 if [ ! -d "$savepath" ]; then
@@ -19,6 +20,12 @@ if [ ! -d "$savepath" ]; then
 else
   echo "Folder '$savepath' already exists."
 fi
+
+# 固定使用 GPU3 运行；若需改GPU请调整此环境变量# 原设置: --batch_size 40, 现改为32
+export CUDA_VISIBLE_DEVICES=3
+# 减少碎片/启用推荐的 cublas 工作区
+export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:128
+export CUBLAS_WORKSPACE_CONFIG=:4096:8
 
 python -u train.py \
     --dataset ${dataset} \
@@ -33,7 +40,7 @@ python -u train.py \
     --cxr_bert_path ${cxr_bert_path} \
     --chexbert_path ${chexbert_path} \
     --bert_path ${bert_path} \
-    --batch_size 40 \
+    --batch_size 32 \
     --val_batch_size 4 \
     --freeze_vm True \
     --savedmodel_path ${savepath} \

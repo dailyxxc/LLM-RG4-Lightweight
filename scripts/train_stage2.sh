@@ -1,18 +1,23 @@
 #!/bin/bash
 dataset="mimic_cxr"
-base_dir="/scratch/$USER/my_project/LLM-RAG/dataset/mimic-cxr-jpg/2.0.0/files/"
-sn_annotation="./dataset/annotation/final_single_view_no_long_add1score_sentence_level.json"
-sw_annotation="./dataset/annotation/final_single_view_with_long_add1score_sentence_level.json"
-mn_annotation="./dataset/annotation/final_multi_view_no_long_add1score_sentence_level.json"
-mw_annotation="./dataset/annotation/final_multi_view_with_long_add1score_sentence_level.json"
+base_dir="../LLM-RG4/mimic-cxr-jpg/2.0.0/files/"
+sn_annotation="../LLM-RG4/final_single_view_no_long_add1score_sentence_level.json"
+sw_annotation="../LLM-RG4/final_single_view_with_long_add1score_sentence_level.json"
+mn_annotation="../LLM-RG4/final_multi_view_no_long_add1score_sentence_level.json"
+mw_annotation="../LLM-RG4/final_multi_view_with_long_add1score_sentence_level.json"
 #vicuna_model="./hf/vicuna-7b-v1.5"
 vicuna_model="./hf/Tiny-Vicuna-1B"
 rad_dino_path="./hf/rad-dino"
 cxr_bert_path="./hf/BiomedVLP-CXR-BERT-specialized"
 chexbert_path="./hf/chexbert.pth"
 bert_path="./hf/bert-base-uncased"
+# 原版本: version="train_stage2_2048"
 version="train_stage2_4096"
-stage1_ckpt_path="./save/mimic_cxr/train_stage1_4096/pths/checkpoint_epoch1_step4315_bleu0.157266_cider0.258717_chexbert0.558715.pth"
+# 原 2048 版本 Stage1 checkpoint（保留作为参考）:
+#stage1_ckpt_path="./save/mimic_cxr/train_stage1_2048/pths/checkpoint_epoch1_step4315_bleu0.157266_cider0.258717_chexbert0.558715.pth"
+#stage1_ckpt_path="./save/mimic_cxr/train_stage1_2048/pths/checkpoint_epoch1_step4315_bleu0.163215_cider0.265794_chexbert0.549376.pth"
+# 4096 版本 Stage1 checkpoint（最新）:
+stage1_ckpt_path="./save/mimic_cxr/train_stage1_4096/pths/checkpoint_epoch1_step5394_bleu0.157948_cider0.279181_chexbert0.552239.pth"
 savepath="./save/$dataset/$version"
 if [ ! -d "$savepath" ]; then
   mkdir -p "$savepath"
@@ -20,6 +25,15 @@ if [ ! -d "$savepath" ]; then
 else
   echo "Folder '$savepath' already exists."
 fi
+
+# 固定使用 GPU3 运行；若需改GPU请调整此环境变量
+export CUDA_VISIBLE_DEVICES=3
+# 减少碎片/启用推荐的 cublas 工作区
+export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:128
+export CUBLAS_WORKSPACE_CONFIG=:4096:8
+
+# 原设置: --batch_size 32, --val_batch_size 8
+# 4096 版本适当降低以适配显存（Stage2 使用 LoRA，内存需求略低但需加载 Stage1 checkpoint）
 python -u train.py \
     --dataset ${dataset} \
     --data_ratio 1\
