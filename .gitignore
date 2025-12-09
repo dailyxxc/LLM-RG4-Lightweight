@@ -26,8 +26,8 @@ checkpoints/
 output/
 saved_models/
 weights/
-save/          # 如果 save 下有大模型/中间产物也忽略
-hf/            # 若含权重或缓存
+save/
+hf/
 wandb/
 runs/
 
